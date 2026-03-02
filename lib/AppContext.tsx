@@ -1,8 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback } from 'react';
 import { Notebook, Chapter, Page, User } from './mockData';
-import { mockUser, mockNotebooks, mockChapters, mockPages } from './mockData';
+import { useAuth } from '@/hooks/use-auth';
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
@@ -14,28 +14,29 @@ export interface AppSettings {
 }
 
 export interface AppState {
-  user: User;
+  user: User | null;
   notebooks: Notebook[];
   chapters: Chapter[];
   pages: Page[];
   favorites: string[];
   settings: AppSettings;
+  loading: boolean;
 }
 
 export interface AppContextType extends AppState {
-  addNotebook: (notebook: Omit<Notebook, 'id' | 'createdAt'>) => void;
-  updateNotebook: (id: string, updates: Partial<Notebook>) => void;
-  deleteNotebook: (id: string) => void;
+  addNotebook: (notebook: Omit<Notebook, 'id' | 'createdAt'>) => Promise<void>;
+  updateNotebook: (id: string, updates: Partial<Notebook>) => Promise<void>;
+  deleteNotebook: (id: string) => Promise<void>;
   
-  addChapter: (chapter: Omit<Chapter, 'id' | 'createdAt'>) => void;
-  updateChapter: (id: string, updates: Partial<Chapter>) => void;
-  deleteChapter: (id: string) => void;
+  addChapter: (chapter: Omit<Chapter, 'id' | 'createdAt'>) => Promise<void>;
+  updateChapter: (id: string, updates: Partial<Chapter>) => Promise<void>;
+  deleteChapter: (id: string) => Promise<void>;
   reorderChapters: (notebookId: string, chapterIds: string[]) => void;
   
-  addPage: (page: Omit<Page, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updatePage: (id: string, updates: Partial<Page>) => void;
-  deletePage: (id: string) => void;
-  movePage: (pageId: string, targetChapterId: string) => void;
+  addPage: (page: Omit<Page, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updatePage: (id: string, updates: Partial<Page>) => Promise<void>;
+  deletePage: (id: string) => Promise<void>;
+  movePage: (pageId: string, targetChapterId: string) => Promise<void>;
   
   toggleFavorite: (pageId: string) => void;
   searchPages: (query: string) => Page[];
@@ -47,12 +48,14 @@ export interface AppContextType extends AppState {
   getPageById: (id: string) => Page | undefined;
   getPagesByChapter: (chapterId: string) => Page[];
   getChaptersByNotebook: (notebookId: string) => Chapter[];
+  loadData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 type AppAction =
   | { type: 'LOAD_STATE'; payload: AppState }
+  | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'ADD_NOTEBOOK'; payload: Notebook }
   | { type: 'UPDATE_NOTEBOOK'; payload: { id: string; updates: Partial<Notebook> } }
   | { type: 'DELETE_NOTEBOOK'; payload: string }
@@ -77,24 +80,14 @@ const defaultSettings: AppSettings = {
 };
 
 const getInitialState = (): AppState => {
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem('appState');
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (e) {
-      console.error('Failed to load state from localStorage', e);
-    }
-  }
-  
   return {
-    user: mockUser,
-    notebooks: mockNotebooks,
-    chapters: mockChapters,
-    pages: mockPages,
-    favorites: mockPages.filter(p => p.isFavorite).map(p => p.id),
+    user: null,
+    notebooks: [],
+    chapters: [],
+    pages: [],
+    favorites: [],
     settings: defaultSettings,
+    loading: true,
   };
 };
 
@@ -102,6 +95,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'LOAD_STATE':
       return action.payload;
+
+    case 'SET_LOADING':
+      return {
+        ...state,
+        loading: action.payload
+      };
 
     case 'ADD_NOTEBOOK': {
       const updated = {
@@ -288,71 +287,120 @@ function appReducer(state: AppState, action: AppAction): AppState {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, getInitialState());
+  const { user: authUser, loading: authLoading } = useAuth();
+
+  const loadData = useCallback(async () => {
+    // Will load from database based on authenticated user
+    // For now, use mock data if user is authenticated
+    dispatch({ type: 'SET_LOADING', payload: false });
+  }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('appState', JSON.stringify(state));
+    if (!authLoading && authUser) {
+      loadData();
+    } else if (!authLoading && !authUser) {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [state]);
+  }, [authUser, authLoading, loadData]);
 
-  const addNotebook = (notebook: Omit<Notebook, 'id' | 'createdAt'>) => {
-    const newNotebook: Notebook = {
-      ...notebook,
-      id: `nb-${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    dispatch({ type: 'ADD_NOTEBOOK', payload: newNotebook });
+  const addNotebook = async (notebook: Omit<Notebook, 'id' | 'createdAt'>) => {
+    try {
+      const newNotebook: Notebook = {
+        ...notebook,
+        id: `nb-${Date.now()}`,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      dispatch({ type: 'ADD_NOTEBOOK', payload: newNotebook });
+    } catch (error) {
+      console.error('Error adding notebook:', error);
+    }
   };
 
-  const updateNotebook = (id: string, updates: Partial<Notebook>) => {
-    dispatch({ type: 'UPDATE_NOTEBOOK', payload: { id, updates } });
+  const updateNotebook = async (id: string, updates: Partial<Notebook>) => {
+    try {
+      dispatch({ type: 'UPDATE_NOTEBOOK', payload: { id, updates } });
+    } catch (error) {
+      console.error('Error updating notebook:', error);
+    }
   };
 
-  const deleteNotebook = (id: string) => {
-    dispatch({ type: 'DELETE_NOTEBOOK', payload: id });
+  const deleteNotebook = async (id: string) => {
+    try {
+      dispatch({ type: 'DELETE_NOTEBOOK', payload: id });
+    } catch (error) {
+      console.error('Error deleting notebook:', error);
+    }
   };
 
-  const addChapter = (chapter: Omit<Chapter, 'id' | 'createdAt'>) => {
-    const newChapter: Chapter = {
-      ...chapter,
-      id: `ch-${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    dispatch({ type: 'ADD_CHAPTER', payload: newChapter });
+  const addChapter = async (chapter: Omit<Chapter, 'id' | 'createdAt'>) => {
+    try {
+      const newChapter: Chapter = {
+        ...chapter,
+        id: `ch-${Date.now()}`,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      dispatch({ type: 'ADD_CHAPTER', payload: newChapter });
+    } catch (error) {
+      console.error('Error adding chapter:', error);
+    }
   };
 
-  const updateChapter = (id: string, updates: Partial<Chapter>) => {
-    dispatch({ type: 'UPDATE_CHAPTER', payload: { id, updates } });
+  const updateChapter = async (id: string, updates: Partial<Chapter>) => {
+    try {
+      dispatch({ type: 'UPDATE_CHAPTER', payload: { id, updates } });
+    } catch (error) {
+      console.error('Error updating chapter:', error);
+    }
   };
 
-  const deleteChapter = (id: string) => {
-    dispatch({ type: 'DELETE_CHAPTER', payload: id });
+  const deleteChapter = async (id: string) => {
+    try {
+      dispatch({ type: 'DELETE_CHAPTER', payload: id });
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+    }
   };
 
   const reorderChapters = (notebookId: string, chapterIds: string[]) => {
     dispatch({ type: 'REORDER_CHAPTERS', payload: { notebookId, chapterIds } });
   };
 
-  const addPage = (page: Omit<Page, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newPage: Page = {
-      ...page,
-      id: `p-${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0]
-    };
-    dispatch({ type: 'ADD_PAGE', payload: newPage });
+  const addPage = async (page: Omit<Page, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const newPage: Page = {
+        ...page,
+        id: `p-${Date.now()}`,
+        createdAt: new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString().split('T')[0]
+      };
+      dispatch({ type: 'ADD_PAGE', payload: newPage });
+    } catch (error) {
+      console.error('Error adding page:', error);
+    }
   };
 
-  const updatePage = (id: string, updates: Partial<Page>) => {
-    dispatch({ type: 'UPDATE_PAGE', payload: { id, updates } });
+  const updatePage = async (id: string, updates: Partial<Page>) => {
+    try {
+      dispatch({ type: 'UPDATE_PAGE', payload: { id, updates } });
+    } catch (error) {
+      console.error('Error updating page:', error);
+    }
   };
 
-  const deletePage = (id: string) => {
-    dispatch({ type: 'DELETE_PAGE', payload: id });
+  const deletePage = async (id: string) => {
+    try {
+      dispatch({ type: 'DELETE_PAGE', payload: id });
+    } catch (error) {
+      console.error('Error deleting page:', error);
+    }
   };
 
-  const movePage = (pageId: string, targetChapterId: string) => {
-    dispatch({ type: 'MOVE_PAGE', payload: { pageId, targetChapterId } });
+  const movePage = async (pageId: string, targetChapterId: string) => {
+    try {
+      dispatch({ type: 'MOVE_PAGE', payload: { pageId, targetChapterId } });
+    } catch (error) {
+      console.error('Error moving page:', error);
+    }
   };
 
   const toggleFavorite = (pageId: string) => {
@@ -405,6 +453,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     getPageById,
     getPagesByChapter,
     getChaptersByNotebook,
+    loadData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

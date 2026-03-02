@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
 import { SearchBar } from '@/components/common/SearchBar';
@@ -8,13 +9,22 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { NotebookCarousel } from '@/components/dashboard/NotebookCarousel';
 import { RecentPages } from '@/components/dashboard/RecentPages';
 import { useApp } from '@/lib/AppContext';
+import { useAuth } from '@/hooks/use-auth';
 import { usePullToRefresh } from '@/lib/hooks';
 import { RefreshCw } from 'lucide-react';
 
 export default function Home() {
-  const { user, notebooks, pages, searchPages } = useApp();
+  const router = useRouter();
+  const { user: authUser, loading: authLoading } = useAuth();
+  const { user, notebooks, pages, searchPages, loading } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPages, setFilteredPages] = useState(pages);
+
+  useEffect(() => {
+    if (!authLoading && !authUser) {
+      router.push('/auth/login');
+    }
+  }, [authUser, authLoading, router]);
 
   const isRefreshing = usePullToRefresh(async () => {
     // Simulate refresh delay
@@ -43,10 +53,36 @@ export default function Home() {
     day: 'numeric',
   });
 
+  if (loading || authLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-gray-500">Loading...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!user && authUser) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-gray-500">Loading your notebooks...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <Header
-        title={`${getGreeting()}, ${user.name.split(' ')[0]}`}
+        title={`${getGreeting()}, ${user?.name?.split(' ')[0] || 'Welcome'}`}
         subtitle={dateStr}
         rightAction={{
           icon: <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />,

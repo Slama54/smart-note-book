@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
+import { useRouter } from 'next/navigation';
 import {
   Moon,
   Sun,
@@ -21,11 +22,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { user, logout, loading: authLoading } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [backupEnabled, setBackupEnabled] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/login');
+    }
+  }, [user, authLoading, router]);
 
   const handleThemeToggle = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -216,12 +227,21 @@ export default function ProfilePage() {
         <Button
           variant="outline"
           className="w-full text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/5"
-          onClick={() => {
-            toast.success('Logged out successfully');
+          onClick={async () => {
+            setIsLoggingOut(true);
+            try {
+              await logout();
+              toast.success('Logged out successfully');
+            } catch (error) {
+              toast.error('Failed to logout');
+            } finally {
+              setIsLoggingOut(false);
+            }
           }}
+          disabled={isLoggingOut}
         >
           <LogOut className="w-4 h-4 mr-2" />
-          Logout
+          {isLoggingOut ? 'Logging out...' : 'Logout'}
         </Button>
 
         <div className="text-center py-4">
