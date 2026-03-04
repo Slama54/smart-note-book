@@ -6,6 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-}
+  transpilePackages: ["@prisma/client"],
+};
 
-export default nextConfig
+export default nextConfig;
