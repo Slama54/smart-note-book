@@ -1,34 +1,66 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// schema.prisma
 
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
-
 }
 
 datasource db {
   provider = "postgresql"
 }
 
+// Enums
+enum CoverPattern {
+  dots
+  lines
+  grid
+  plain
+}
+
+enum QuestionType {
+  multiple_choice
+  true_false
+  short_answer
+  essay
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum ScanStatus {
+  pending
+  processing
+  completed
+  failed
+}
+
+// User model 
 model User {
   id            String    @id
   name          String
   email         String
   emailVerified Boolean   @default(false)
   image         String?
+  joinDate      DateTime  @default(now()) @map("join_date")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
+  // Relations
   sessions      Session[]
   accounts      Account[]
+  notebooks     Notebook[]
+  favoritePages Page[]     @relation("UserFavoritePages")
+  chatHistory   ChatHistory[]
+  scanHistory   ScanHistory[]
 
   @@unique([email])
   @@map("user")
 }
 
+// Session model 
 model Session {
   id        String   @id
   expiresAt DateTime
@@ -45,6 +77,7 @@ model Session {
   @@map("session")
 }
 
+// Account model 
 model Account {
   id                    String    @id
   accountId             String
@@ -65,6 +98,7 @@ model Account {
   @@map("account")
 }
 
+// Verification model 
 model Verification {
   id         String   @id
   identifier String
@@ -75,4 +109,211 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// Enhanced Notebook model
+model Notebook {
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  coverColor   String        @default("#2E7D32") @map("cover_color")
+  coverPattern CoverPattern? @map("cover_pattern")
+  pageCount    Int           @default(0) @map("page_count")
+  isArchived   Boolean       @default(false) @map("is_archived")
+  createdAt    DateTime      @default(now())
+  lastEdited   DateTime      @updatedAt @map("last_edited")
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapters     Chapter[]
+  pages        Page[]
+  chatHistory  ChatHistory[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([isArchived])
+  @@map("notebook")
+}
+
+// Enhanced Chapter model
+model Chapter {
+  id          String    @id @default(cuid())
+  notebookId  String
+  name        String
+  description String?
+  color       String?   @default("#FF6B6B")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  notebook    Notebook  @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  pages       Page[]
+  questions   Question[]
+  chatHistory ChatHistory[]
+
+  @@unique([notebookId, name])
+  @@index([notebookId])
+  @@map("chapter")
+}
+
+// Enhanced Page model
+model Page {
+  id           String    @id @default(cuid())
+  chapterId    String
+  pageNumber   Int       @map("page_number")
+  title        String
+  content      String?   @db.Text // OCR text content
+  imageUrl     String?   @map("image_url")
+  text         String    @default("") // For backward compatibility
+  order        Int       @default(0)
+  isFavorite   Boolean   @default(false) @map("is_favorite")
+  qrCodeValue  String?   @unique @map("qr_code_value")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  chapter      Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  favoritedBy  User[]    @relation("UserFavoritePages")
+  tags         TagOnPage[]
+  graphs       Graph[]
+  questions    Question[]
+  embedding    PageEmbedding?
+  notebook     Notebook? @relation(fields: [notebookId], references: [id])
+  notebookId   String?   @map("notebook_id")
+  chatHistory  ChatHistory[]
+  scanHistory  ScanHistory[]
+
+  @@unique([chapterId, pageNumber])
+  @@index([chapterId])
+  @@index([qrCodeValue])
+  @@index([isFavorite])
+  @@map("page")
+}
+
+// Tags model
+model Tag {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  pages     TagOnPage[]
+  createdAt DateTime  @default(now())
+
+  @@map("tag")
+}
+
+// Junction table for Page-Tag many-to-many
+model TagOnPage {
+  pageId    String    @map("page_id")
+  tagId     String    @map("tag_id")
+  page      Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  tag       Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([pageId, tagId])
+  @@map("tag_on_page")
+}
+
+// Graph model for extracted graphs
+model Graph {
+  id          String    @id @default(cuid())
+  pageId      String    @map("page_id")
+  imageUrl    String    @map("image_url")
+  title       String?
+  description String?
+  coordinates Json?     // Store graph coordinates/dimensions
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  page        Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@map("graph")
+}
+
+// Question model for generated exams
+model Question {
+  id           String        @id @default(cuid())
+  pageId       String?       @map("page_id")
+  chapterId    String        @map("chapter_id")
+  questionType QuestionType
+  questionText String        @map("question_text") @db.Text
+  options      Json?         // For multiple choice questions
+  correctAnswer String       @map("correct_answer") @db.Text
+  explanation  String?       @db.Text
+  difficulty   Difficulty    @default(medium)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  page         Page?         @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  chapter      Chapter       @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([chapterId])
+  @@index([questionType])
+  @@index([difficulty])
+  @@map("question")
+}
+
+// PageEmbedding model for RAG system
+model PageEmbedding {
+  id           String    @id @default(cuid())
+  pageId       String    @unique @map("page_id")
+  embedding    Json      // Store vector embedding
+  modelVersion String    @map("model_version")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  page         Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@map("page_embedding")
+}
+
+// ChatHistory model for RAG conversations
+model ChatHistory {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  notebookId   String?   @map("notebook_id")
+  chapterId    String?   @map("chapter_id")
+  pageId       String?   @map("page_id")
+  userMessage  String    @map("user_message") @db.Text
+  aiResponse   String    @map("ai_response") @db.Text
+  sources      Json?     // References to pages used for answer
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notebook     Notebook? @relation(fields: [notebookId], references: [id], onDelete: SetNull)
+  chapter      Chapter?  @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  page         Page?     @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([notebookId])
+  @@index([chapterId])
+  @@index([pageId])
+  @@map("chat_history")
+}
+
+// ScanHistory model for tracking OCR processing
+model ScanHistory {
+  id           String        @id @default(cuid())
+  userId       String        @map("user_id")
+  pageId       String?       @map("page_id")
+  status       ScanStatus
+  imageUrl     String        @map("image_url")
+  qrCodeValue  String?       @map("qr_code_value")
+  errorMessage String?       @map("error_message") @db.Text
+  createdAt    DateTime      @default(now())
+  completedAt  DateTime?     @map("completed_at")
+
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  page         Page?         @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@map("scan_history")
 }
