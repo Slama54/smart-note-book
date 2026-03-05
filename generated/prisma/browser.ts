@@ -37,3 +37,53 @@ export type Account = Prisma.AccountModel
  * 
  */
 export type Verification = Prisma.VerificationModel
+/**
+ * Model Notebook
+ * 
+ */
+export type Notebook = Prisma.NotebookModel
+/**
+ * Model Chapter
+ * 
+ */
+export type Chapter = Prisma.ChapterModel
+/**
+ * Model Page
+ * 
+ */
+export type Page = Prisma.PageModel
+/**
+ * Model Tag
+ * 
+ */
+export type Tag = Prisma.TagModel
+/**
+ * Model TagOnPage
+ * 
+ */
+export type TagOnPage = Prisma.TagOnPageModel
+/**
+ * Model Graph
+ * 
+ */
+export type Graph = Prisma.GraphModel
+/**
+ * Model Question
+ * 
+ */
+export type Question = Prisma.QuestionModel
+/**
+ * Model PageEmbedding
+ * 
+ */
+export type PageEmbedding = Prisma.PageEmbeddingModel
+/**
+ * Model ChatHistory
+ * 
+ */
+export type ChatHistory = Prisma.ChatHistoryModel
+/**
+ * Model ScanHistory
+ * 
+ */
+export type ScanHistory = Prisma.ScanHistoryModel

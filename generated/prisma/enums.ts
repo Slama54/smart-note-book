@@ -9,7 +9,40 @@
 * 🟢 You can import this file directly.
 */
 
+export const CoverPattern = {
+  dots: 'dots',
+  lines: 'lines',
+  grid: 'grid',
+  plain: 'plain'
+} as const
+
+export type CoverPattern = (typeof CoverPattern)[keyof typeof CoverPattern]
 
 
-// This file is empty because there are no enums in the schema.
-export {}
+export const QuestionType = {
+  multiple_choice: 'multiple_choice',
+  true_false: 'true_false',
+  short_answer: 'short_answer',
+  essay: 'essay'
+} as const
+
+export type QuestionType = (typeof QuestionType)[keyof typeof QuestionType]
+
+
+export const Difficulty = {
+  easy: 'easy',
+  medium: 'medium',
+  hard: 'hard'
+} as const
+
+export type Difficulty = (typeof Difficulty)[keyof typeof Difficulty]
+
+
+export const ScanStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  completed: 'completed',
+  failed: 'failed'
+} as const
+
+export type ScanStatus = (typeof ScanStatus)[keyof typeof ScanStatus]

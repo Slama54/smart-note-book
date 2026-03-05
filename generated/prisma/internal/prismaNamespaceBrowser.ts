@@ -54,7 +54,17 @@ export const ModelName = {
   User: 'User',
   Session: 'Session',
   Account: 'Account',
-  Verification: 'Verification'
+  Verification: 'Verification',
+  Notebook: 'Notebook',
+  Chapter: 'Chapter',
+  Page: 'Page',
+  Tag: 'Tag',
+  TagOnPage: 'TagOnPage',
+  Graph: 'Graph',
+  Question: 'Question',
+  PageEmbedding: 'PageEmbedding',
+  ChatHistory: 'ChatHistory',
+  ScanHistory: 'ScanHistory'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -79,6 +89,7 @@ export const UserScalarFieldEnum = {
   email: 'email',
   emailVerified: 'emailVerified',
   image: 'image',
+  joinDate: 'joinDate',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -131,12 +142,166 @@ export const VerificationScalarFieldEnum = {
 export type VerificationScalarFieldEnum = (typeof VerificationScalarFieldEnum)[keyof typeof VerificationScalarFieldEnum]
 
 
+export const NotebookScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  name: 'name',
+  description: 'description',
+  coverColor: 'coverColor',
+  coverPattern: 'coverPattern',
+  pageCount: 'pageCount',
+  isArchived: 'isArchived',
+  createdAt: 'createdAt',
+  lastEdited: 'lastEdited',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NotebookScalarFieldEnum = (typeof NotebookScalarFieldEnum)[keyof typeof NotebookScalarFieldEnum]
+
+
+export const ChapterScalarFieldEnum = {
+  id: 'id',
+  notebookId: 'notebookId',
+  name: 'name',
+  description: 'description',
+  color: 'color',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ChapterScalarFieldEnum = (typeof ChapterScalarFieldEnum)[keyof typeof ChapterScalarFieldEnum]
+
+
+export const PageScalarFieldEnum = {
+  id: 'id',
+  chapterId: 'chapterId',
+  pageNumber: 'pageNumber',
+  title: 'title',
+  content: 'content',
+  imageUrl: 'imageUrl',
+  text: 'text',
+  order: 'order',
+  isFavorite: 'isFavorite',
+  qrCodeValue: 'qrCodeValue',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  notebookId: 'notebookId'
+} as const
+
+export type PageScalarFieldEnum = (typeof PageScalarFieldEnum)[keyof typeof PageScalarFieldEnum]
+
+
+export const TagScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  createdAt: 'createdAt'
+} as const
+
+export type TagScalarFieldEnum = (typeof TagScalarFieldEnum)[keyof typeof TagScalarFieldEnum]
+
+
+export const TagOnPageScalarFieldEnum = {
+  pageId: 'pageId',
+  tagId: 'tagId'
+} as const
+
+export type TagOnPageScalarFieldEnum = (typeof TagOnPageScalarFieldEnum)[keyof typeof TagOnPageScalarFieldEnum]
+
+
+export const GraphScalarFieldEnum = {
+  id: 'id',
+  pageId: 'pageId',
+  imageUrl: 'imageUrl',
+  title: 'title',
+  description: 'description',
+  coordinates: 'coordinates',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GraphScalarFieldEnum = (typeof GraphScalarFieldEnum)[keyof typeof GraphScalarFieldEnum]
+
+
+export const QuestionScalarFieldEnum = {
+  id: 'id',
+  pageId: 'pageId',
+  chapterId: 'chapterId',
+  questionType: 'questionType',
+  questionText: 'questionText',
+  options: 'options',
+  correctAnswer: 'correctAnswer',
+  explanation: 'explanation',
+  difficulty: 'difficulty',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type QuestionScalarFieldEnum = (typeof QuestionScalarFieldEnum)[keyof typeof QuestionScalarFieldEnum]
+
+
+export const PageEmbeddingScalarFieldEnum = {
+  id: 'id',
+  pageId: 'pageId',
+  embedding: 'embedding',
+  modelVersion: 'modelVersion',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PageEmbeddingScalarFieldEnum = (typeof PageEmbeddingScalarFieldEnum)[keyof typeof PageEmbeddingScalarFieldEnum]
+
+
+export const ChatHistoryScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  notebookId: 'notebookId',
+  chapterId: 'chapterId',
+  pageId: 'pageId',
+  userMessage: 'userMessage',
+  aiResponse: 'aiResponse',
+  sources: 'sources',
+  createdAt: 'createdAt'
+} as const
+
+export type ChatHistoryScalarFieldEnum = (typeof ChatHistoryScalarFieldEnum)[keyof typeof ChatHistoryScalarFieldEnum]
+
+
+export const ScanHistoryScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  pageId: 'pageId',
+  status: 'status',
+  imageUrl: 'imageUrl',
+  qrCodeValue: 'qrCodeValue',
+  errorMessage: 'errorMessage',
+  createdAt: 'createdAt',
+  completedAt: 'completedAt'
+} as const
+
+export type ScanHistoryScalarFieldEnum = (typeof ScanHistoryScalarFieldEnum)[keyof typeof ScanHistoryScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {
@@ -153,4 +318,13 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 
